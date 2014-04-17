@@ -1,0 +1,66 @@
+{
+  "version" : "3.0",
+  "input_type" : "csv",
+  "csv_style": { "delimiter": "," , "n_columns_datafile": 19, "ignore_first_line": true}
+
+  
+  "key": {"column_position": 1, "type": "integer"},
+
+  "binlist": [  
+ 	{"name": "YEAR",
+     "value": {"column_position": 2, "type" : "integer"}
+    },
+ 	{"name": "DAY_OF_MONTH",
+     "value": {"column_position": 3, "type" : "integer"}
+    },
+        {"name": "FL_DATE_BIN",
+     "value": {"column_position": 4, "type" : "timestamp", "encoding":"yyyy/MM/dd", "dst_type": "integer"}
+    },
+ 	{"name": "AIRLINE_ID",
+     "value": {"column_position": 5, "type" : "integer"}
+    },
+ 	{"name": "CARRIER",
+     "value": {"column_position": 6, "type" : "string"}
+    },
+ 	{"name": "FL_NUM",
+     "value": {"column_position": 7, "type" : "integer"}
+    },
+ 	{"name": "ORI_AIRPORT_ID",
+     "value": {"column_position": 8, "type" : "integer"}
+    },
+ 	{"name": "ORIGIN",
+     "value": {"column_position": 9, "type" : "string"}
+    },
+ 	{"name": "ORI_CITY_NAME",
+     "value": {"column_position": 10, "type" : "string"}
+    },
+ 	{"name": "ORI_STAT_ABR",
+     "value": {"column_position": 11, "type" : "string"}
+    },
+ 	{"name": "DEST",
+     "value": {"column_position": 12, "type" : "string"}
+    },
+ 	{"name": "DEST_CITY_NAME",
+     "value": {"column_position": 13, "type" : "string"}
+    },
+ 	{"name": "DEST_STATE_ABR",
+     "value": {"column_position": 14, "type" : "string"}
+    },
+ 	{"name": "DEP_TIME",
+     "value": {"column_position": 15, "type" : "integer"}
+    },
+ 	{"name": "ARR_TIME",
+     "value": {"column_position": 16, "type" : "integer"}
+    },
+ 	{"name": "ELAPSED_TIME",
+     "value": {"column_position": 17, "type" : "integer"}
+    },
+ 	{"name": "AIR_TIME",
+     "value": {"column_position": 18, "type" : "integer"}
+    },
+ 	{"name": "DISTANCE",
+     "value": {"column_position": 19, "type" : "integer"}
+    }
+  ]
+
+}

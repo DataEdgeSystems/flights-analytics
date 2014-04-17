@@ -5,7 +5,9 @@ import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.Collections;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,12 +26,12 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.Record;
-import com.aerospike.client.Value;
 import com.aerospike.client.lua.LuaConfig;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
+import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.ResultSet;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.IndexTask;
@@ -37,8 +39,8 @@ import com.aerospike.client.task.RegisterTask;
 
 
 public class SimpleAggregation {
-	private static final String FL_DATE_BIN = "FL_DATE";
-	private static final String FL_DATE_INDEX = FL_DATE_BIN;
+	private static final String FL_DATE_BIN = "FL_DATE_BIN";
+	private static final String FL_DATE_INDEX = "flight_date";
 	private static final String FLIGHTS = "flights";
 	private AerospikeClient client;
 	private String seedHost;
@@ -55,7 +57,7 @@ public class SimpleAggregation {
 		this.policy = new Policy();
 		this.namespace = namespace;
 	}
-	public static void main(String[] args) {
+	public static void main(String[] args) throws java.text.ParseException {
 		try {
 			Options options = new Options();
 			options.addOption("h", "host", true, "Server hostname (default: localhost)");
@@ -99,7 +101,7 @@ public class SimpleAggregation {
 			log.error("Aerospike error", e);
 		}
 	}
-	public void aggregation() throws AerospikeException {
+	public void aggregation() throws AerospikeException, java.text.ParseException {
 
 		/*
 		 * Register UDF
@@ -113,27 +115,37 @@ public class SimpleAggregation {
 		task.waitTillComplete();
 		log.info("registered UDF");
 
-
-		
+		/*
+		 * create time stamps for query from
+		 * the start date and end date
+		 */
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+		Date startDate = sdf.parse("2012-01-01");
+		long startTimeStamp = startDate.getTime() / 1000;
+		Date endDate = sdf.parse("2012-01-31");
+		long endTimeStamp = endDate.getTime() / 1000;
 		/*
 		 * build the query
 		 */
 		Statement stmt = new Statement();
 		stmt.setNamespace(this.namespace);
 		stmt.setSetName(FLIGHTS);
-		stmt.setFilters(Filter.range(FL_DATE_BIN, 20120101, 20120131));
+		stmt.setFilters(Filter.range(FL_DATE_BIN, startTimeStamp, endTimeStamp));
 		log.info("built query");
+
 		// Execute the query
 		ResultSet rs = client.queryAggregate(null, stmt, "simple_aggregation", "late_flights_by_airline");
 		log.info("executed aggregation");
 		if (rs != null){
-//			Map map = null;
+			Map map = null;
 			log.info("Airlines with late flights:");
+			long  start = System.nanoTime();
 			while (rs.next()){
-				log.info( rs.getObject());
+				map = (Map) rs.getObject();
 			}
-			log.info("Airlines with late flights:");
-//			printMap(map);
+			long stop = System.nanoTime();
+			printMap(map);
+			log.info("Time: " + (stop-start)/1000000);
 		} else {
 			log.info("Nothing returned");
 		}
@@ -145,9 +157,9 @@ public class SimpleAggregation {
 		Set keySet = map.keySet();
 		for (Object key : keySet){
 			Map<String, Long> airline = (Map<String, Long>) map.get(key);
-			log.info(String.format("%s: %6d %6d", key.toString(), airline.get("flights"), airline.get("late")));
+			log.info(String.format("%s: %6d %6d %3d%%", key.toString(), airline.get("flights"), airline.get("late"), airline.get("percent")));
 		}
-		
+
 	}
 	public void loadData(String fileName){
 		File file = new File(fileName);
