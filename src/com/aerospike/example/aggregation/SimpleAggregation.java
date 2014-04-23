@@ -39,6 +39,23 @@ import com.aerospike.client.task.RegisterTask;
 
 
 public class SimpleAggregation {
+	private static final String DISTANCE_BIN = "DISTANCE";
+	private static final String AIR_TIME_BIN = "AIR_TIME";
+	private static final String ELAPSED_TIME_BIN = "ELAPSED_TIME";
+	private static final String ARR_TIME_BIN = "ARR_TIME";
+	private static final String DEP_TIME_BIN = "DEP_TIME";
+	private static final String DEST_STATE_ABR_BIN = "DEST_STATE_ABR";
+	private static final String DEST_CITY_NAME_BIN = "DEST_CITY_NAME";
+	private static final String DEST_BIN = "DEST";
+	private static final String ORI_STATE_ABR_BIN = "ORI_STATE_ABR";
+	private static final String ORI_CITY_NAME_BIN = "ORI_CITY_NAME";
+	private static final String ORIGIN_BIN = "ORIGIN";
+	private static final String ORI_AIRPORT_ID_BIN = "ORI_AIRPORT_ID";
+	private static final String FL_NUM_BIN = "FL_NUM";
+	private static final String CARRIER_BIN = "CARRIER";
+	private static final String AIRLINE_ID_BIN = "AIRLINE_ID";
+	private static final String DAY_OF_MONTH_BIN = "DAY_OF_MONTH";
+	private static final String YEAR_BIN = "YEAR";
 	private static final String FL_DATE_BIN = "FL_DATE_BIN";
 	private static final String FL_DATE_INDEX = "flight_date";
 	private static final String FLIGHTS = "flights";
@@ -164,6 +181,15 @@ public class SimpleAggregation {
 	public void loadData(String fileName){
 		File file = new File(fileName);
 		if (file.exists()) {
+			if (file.isDirectory()){
+				
+			} else {
+				loadFile(file);
+			}
+		}
+	}
+	public void loadFile(File file){
+		if (file.exists()) {
 			try {
 				/*
 				 * create index on itemNo
@@ -186,24 +212,24 @@ public class SimpleAggregation {
 					 */
 					client.put(this.writePolicy,
 							new Key(this.namespace, FLIGHTS,flight[0].trim() ),
-							new Bin("YEAR", Integer.parseInt(flight[1].trim())),	
-							new Bin("DAY_OF_MONTH", Integer.parseInt(flight[2].trim())),
+							new Bin(YEAR_BIN, Integer.parseInt(flight[1].trim())),	
+							new Bin(DAY_OF_MONTH_BIN, Integer.parseInt(flight[2].trim())),
 							new Bin(FL_DATE_BIN, toTimeStamp(flight[3].trim())),
-							new Bin("AIRLINE_ID", Integer.parseInt(flight[4].trim())),	
-							new Bin("CARRIER", flight[5].trim()),
-							new Bin("FL_NUM", Integer.parseInt(flight[6].trim())),
-							new Bin("ORI_AIRPORT_ID", Integer.parseInt(flight[7].trim())),
-							new Bin("ORIGIN", flight[8].trim()),
-							new Bin("ORI_CITY_NAME", flight[9].trim()),
-							new Bin("ORI_STATE_ABR", flight[10].trim()),
-							new Bin("DEST", flight[11].trim()),
-							new Bin("DEST_CITY_NAME", flight[12].trim()),
-							new Bin("DEST_STATE_ABR", flight[13].trim()),
-							new Bin("DEP_TIME", Integer.parseInt(flight[14].trim())),
-							new Bin("ARR_TIME", Integer.parseInt(flight[15].trim())),
-							new Bin("ELAPSED_TIME", Integer.parseInt(flight[16].trim())),
-							new Bin("AIR_TIME", Integer.parseInt(flight[17].trim())),
-							new Bin("DISTANCE", Integer.parseInt(flight[18].trim()))
+							new Bin(AIRLINE_ID_BIN, Integer.parseInt(flight[4].trim())),	
+							new Bin(CARRIER_BIN, flight[5].trim()),
+							new Bin(FL_NUM_BIN, Integer.parseInt(flight[6].trim())),
+							new Bin(ORI_AIRPORT_ID_BIN, Integer.parseInt(flight[7].trim())),
+							new Bin(ORIGIN_BIN, flight[8].trim()),
+							new Bin(ORI_CITY_NAME_BIN, flight[9].trim()),
+							new Bin(ORI_STATE_ABR_BIN, flight[10].trim()),
+							new Bin(DEST_BIN, flight[11].trim()),
+							new Bin(DEST_CITY_NAME_BIN, flight[12].trim()),
+							new Bin(DEST_STATE_ABR_BIN, flight[13].trim()),
+							new Bin(DEP_TIME_BIN, Integer.parseInt(flight[14].trim())),
+							new Bin(ARR_TIME_BIN, Integer.parseInt(flight[15].trim())),
+							new Bin(ELAPSED_TIME_BIN, Integer.parseInt(flight[16].trim())),
+							new Bin(AIR_TIME_BIN, Integer.parseInt(flight[17].trim())),
+							new Bin(DISTANCE_BIN, Integer.parseInt(flight[18].trim()))
 							);
 
 					log.debug("Flight [ID= " + flight[0] 
@@ -214,12 +240,12 @@ public class SimpleAggregation {
 
 				}
 				br.close();
-				log.info("Successfully uploaded " + fileName);
+				log.info("Successfully uploaded " + file.getName());
 			} catch (Exception e) {
-				log.error("Failed to upload " + fileName, e);
+				log.error("Failed to upload " + file.getName(), e);
 			}
 		} else {
-			log.error("Failed to upload " + fileName + " because is does not exist.");
+			log.error("Failed to upload " + file.getName() + " because is does not exist.");
 		}
 
 	}
