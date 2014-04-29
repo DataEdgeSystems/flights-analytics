@@ -3,7 +3,7 @@
 ##Problem
 You want to perform analytics on your BigData stored in Aerospike, and Hadoop is too slow to meet the business requirements
 ##Solution
-Use an Aerospike Aggregation on data streaming from the output of a query. Aggregations are a union of a query on a secondary index and one or more StreamUDFs.
+Use an Aerospike Aggregation on data streaming from the output of a query. Aggregations are the union of a query on a secondary index and one or more StreamUDFs.
 
 ###Getting the code
 The source code for this solution is available on GitHub, at https://github.com/aerospike/flights-analytics.git
@@ -14,7 +14,7 @@ git clone https://github.com/aerospike/flights-analytics.git
 ```
 
 ###Build instructions
-The utility requires a working Java development environment (Java 6 and above) including Maven (Maven 2). The Aerospike Java client will be downloaded from Maven Central as part of the build.
+This example requires a working Java development environment (Java 6 and above) including Maven (Maven 2). The Aerospike Java client will be downloaded from Maven Central as part of the build.
 
 After cloning the repository, use maven to build the jar files. From the root directory of the project, issue the following command:
 ```
@@ -27,10 +27,11 @@ Create a secondary index on the Bin ```FL_DATE_BIN``` using the AQL utility. At 
 ```sql
 CREATE INDEX FL_DATE on test.flights (FL_DATE_BIN) NUMERIC
 ```
+The AQL is also in the file ```aql/CreateIndex.aql``` 
 ###Test data
 The data is flight records of commercial airline flights in the USA, for the month of January 2012. There are approximately 1,050,000 records in the data set. This data set is divided into several files that are 10,000 records each.
 
-You load the test data by running the jar with the ```-f``` option, specifying the data directory. This will load the data from the CSV files supplied in the 'data' directory.
+You load the test data by running the jar with the ```-f``` option, specifying the 'data' directory. This will load the data from the CSV files supplied in the 'data' directory.
 ```
 java -jar flights-analytics-1.0.0-jar-with-dependencies.jar -h <host name> -f data
 ```
@@ -59,10 +60,11 @@ java -jar flights-analytics-1.0.0-jar-with-dependencies.jar -h <host name>
 
 ####Output
 
+<ToDO>
 
 ##Discussion 
 
-
+<ToDO>
 
 ###Record Structure
 The Key consists of the ```namespace``` from the ```-n``` option (default: test), the set is ```flights```, and the actual key is a String containing a unique number.
@@ -206,4 +208,4 @@ end
  
 ####Configuration function: late\_flights\_by\_airline()
 This function configures the stream processing.
-
+<ToDo>
