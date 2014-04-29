@@ -69,7 +69,7 @@
 					<archive>
 						<manifest>
 							<addClasspath>true</addClasspath>
-							<mainClass>com.aerospike.example.aggregation.SimpleAggregation</mainClass>
+							<mainClass>com.aerospike.example.aggregation.FlightsAnalytics</mainClass>
 						</manifest>
 					</archive>
 				</configuration>

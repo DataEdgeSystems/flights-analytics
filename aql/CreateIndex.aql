@@ -1,0 +1,1 @@
+CREATE INDEX FL_DATE on test.flights (FL_DATE_BIN) NUMERIC

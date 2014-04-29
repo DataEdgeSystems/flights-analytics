@@ -1,12 +1,15 @@
 package com.aerospike.example.aggregation;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -25,20 +28,18 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
-import com.aerospike.client.Record;
 import com.aerospike.client.lua.LuaConfig;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
-import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.ResultSet;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
 
 
-public class SimpleAggregation {
+public class FlightsAnalytics {
 	private static final String DISTANCE_BIN = "DISTANCE";
 	private static final String AIR_TIME_BIN = "AIR_TIME";
 	private static final String ELAPSED_TIME_BIN = "ELAPSED_TIME";
@@ -59,14 +60,17 @@ public class SimpleAggregation {
 	private static final String FL_DATE_BIN = "FL_DATE_BIN";
 	private static final String FL_DATE_INDEX = "flight_date";
 	private static final String FLIGHTS = "flights";
+	
 	private AerospikeClient client;
 	private String seedHost;
 	private int port;
 	private WritePolicy writePolicy;
 	private Policy policy;
 	private String namespace;
-	private static Logger log = Logger.getLogger(SimpleAggregation.class);
-	public SimpleAggregation(String host, int port, String namespace) throws AerospikeException {
+	private static Logger log = Logger.getLogger(FlightsAnalytics.class);
+	private DateFormat format = new SimpleDateFormat("yyyy/MM/dd");
+	
+	public FlightsAnalytics(String host, int port, String namespace) throws AerospikeException {
 		this.client = new AerospikeClient(host, port);
 		this.seedHost = host;
 		this.port = port;
@@ -80,7 +84,7 @@ public class SimpleAggregation {
 			options.addOption("h", "host", true, "Server hostname (default: localhost)");
 			options.addOption("p", "port", true, "Server port (default: 3000)");
 			options.addOption("n", "namespace", true, "Namespace (default: test)");
-			options.addOption("f", "file", true, "Data file (default: data/flights_from.csv)");
+			options.addOption("f", "file", true, "Data file (default: data)");
 			options.addOption("u", "usage", false, "Print usage.");
 
 			CommandLineParser parser = new PosixParser();
@@ -90,7 +94,7 @@ public class SimpleAggregation {
 			String host = cl.getOptionValue("h", "127.0.0.1");
 			String portString = cl.getOptionValue("p", "3000");
 			String namespace = cl.getOptionValue("n", "test");
-			String fileName = cl.getOptionValue("f", "data/flights_from.csv");
+			String fileName = cl.getOptionValue("f", "data");
 			int port = Integer.parseInt(portString);
 			log.debug("Host: " + host);
 			log.debug("Port: " + port);
@@ -105,7 +109,7 @@ public class SimpleAggregation {
 				return;
 			}
 
-			SimpleAggregation sa = new SimpleAggregation(host, port, namespace);
+			FlightsAnalytics sa = new FlightsAnalytics(host, port, namespace);
 			if (cl.hasOption("f"))
 				sa.loadData(fileName);
 			else
@@ -178,92 +182,94 @@ public class SimpleAggregation {
 		}
 
 	}
-	public void loadData(String fileName){
-		File file = new File(fileName);
-		if (file.exists()) {
-			if (file.isDirectory()){
-				
-			} else {
-				loadFile(file);
+	public void loadData(String fileName) {
+		try {
+			/*
+			 * create index on itemNo
+			 */
+			IndexTask indexTask = this.client.createIndex(this.policy, this.namespace, FLIGHTS, 
+					FL_DATE_INDEX, FL_DATE_BIN, IndexType.NUMERIC);
+			indexTask.waitTillComplete();
+			log.info("created index");
+
+			File file = new File(fileName);
+			if (file.exists()) {
+				if (file.isDirectory()){
+					File[] csvFiles =file.listFiles();
+					for (final File aFile : csvFiles){
+						loadFile(aFile);
+					}
+				} else {
+					loadFile(file);
+				}
 			}
+		} catch (Exception e){
+			log.error("Failed to upload data from " + fileName, e);
 		}
 	}
-	public void loadFile(File file){
+	public void loadFile(File file) throws NumberFormatException, IOException, AerospikeException, java.text.ParseException{
 		if (file.exists()) {
-			try {
+
+			String line =  "";
+			BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
+			while ((line = br.readLine()) != null) {
+
+				// use comma as separator
+				String[] flight = line.split(",");
+
 				/*
-				 * create index on itemNo
+				 * write the record to Aerospike
+				 * NOTE: Bin names must not exceed 14 characters
 				 */
-				IndexTask indexTask = this.client.createIndex(this.policy, this.namespace, FLIGHTS, 
-						FL_DATE_INDEX, FL_DATE_BIN, IndexType.NUMERIC);
-				indexTask.waitTillComplete();
-				log.info("created index");
+				client.put(this.writePolicy,
+						new Key(this.namespace, FLIGHTS,flight[0].trim() ),
+						new Bin(YEAR_BIN, Integer.parseInt(flight[1].trim())),	
+						new Bin(DAY_OF_MONTH_BIN, Integer.parseInt(flight[2].trim())),
+						new Bin(FL_DATE_BIN, toTimeStamp(flight[3].trim())),
+						new Bin(AIRLINE_ID_BIN, Integer.parseInt(flight[4].trim())),	
+						new Bin(CARRIER_BIN, flight[5].trim()),
+						new Bin(FL_NUM_BIN, Integer.parseInt(flight[6].trim())),
+						new Bin(ORI_AIRPORT_ID_BIN, Integer.parseInt(flight[7].trim())),
+						new Bin(ORIGIN_BIN, flight[8].trim()),
+						new Bin(ORI_CITY_NAME_BIN, flight[9].trim()),
+						new Bin(ORI_STATE_ABR_BIN, flight[10].trim()),
+						new Bin(DEST_BIN, flight[11].trim()),
+						new Bin(DEST_CITY_NAME_BIN, flight[12].trim()),
+						new Bin(DEST_STATE_ABR_BIN, flight[13].trim()),
+						new Bin(DEP_TIME_BIN, Integer.parseInt(flight[14].trim())),
+						new Bin(ARR_TIME_BIN, Integer.parseInt(flight[15].trim())),
+						new Bin(ELAPSED_TIME_BIN, Integer.parseInt(flight[16].trim())),
+						new Bin(AIR_TIME_BIN, Integer.parseInt(flight[17].trim())),
+						new Bin(DISTANCE_BIN, Integer.parseInt(flight[18].trim()))
+						);
 
-				String line =  "";
-				BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
-				while ((line = br.readLine()) != null) {
+				log.debug("Flight [ID= " + flight[0] 
+						+ " , FL_DATE=" + flight[3] 
+								+ " , CARRIER=" + flight[5] 
+										+ " , FL_NUM=" + flight[6] 
+												+ "]");
 
-					// use comma as separator
-					String[] flight = line.split(",");
-
-					/*
-					 * write the record to Aerospike
-					 * NOTE: Bin names must not exceed 14 characters
-					 */
-					client.put(this.writePolicy,
-							new Key(this.namespace, FLIGHTS,flight[0].trim() ),
-							new Bin(YEAR_BIN, Integer.parseInt(flight[1].trim())),	
-							new Bin(DAY_OF_MONTH_BIN, Integer.parseInt(flight[2].trim())),
-							new Bin(FL_DATE_BIN, toTimeStamp(flight[3].trim())),
-							new Bin(AIRLINE_ID_BIN, Integer.parseInt(flight[4].trim())),	
-							new Bin(CARRIER_BIN, flight[5].trim()),
-							new Bin(FL_NUM_BIN, Integer.parseInt(flight[6].trim())),
-							new Bin(ORI_AIRPORT_ID_BIN, Integer.parseInt(flight[7].trim())),
-							new Bin(ORIGIN_BIN, flight[8].trim()),
-							new Bin(ORI_CITY_NAME_BIN, flight[9].trim()),
-							new Bin(ORI_STATE_ABR_BIN, flight[10].trim()),
-							new Bin(DEST_BIN, flight[11].trim()),
-							new Bin(DEST_CITY_NAME_BIN, flight[12].trim()),
-							new Bin(DEST_STATE_ABR_BIN, flight[13].trim()),
-							new Bin(DEP_TIME_BIN, Integer.parseInt(flight[14].trim())),
-							new Bin(ARR_TIME_BIN, Integer.parseInt(flight[15].trim())),
-							new Bin(ELAPSED_TIME_BIN, Integer.parseInt(flight[16].trim())),
-							new Bin(AIR_TIME_BIN, Integer.parseInt(flight[17].trim())),
-							new Bin(DISTANCE_BIN, Integer.parseInt(flight[18].trim()))
-							);
-
-					log.debug("Flight [ID= " + flight[0] 
-							+ " , FL_DATE=" + flight[3] 
-									+ " , CARRIER=" + flight[5] 
-											+ " , FL_NUM=" + flight[6] 
-													+ "]");
-
-				}
-				br.close();
-				log.info("Successfully uploaded " + file.getName());
-			} catch (Exception e) {
-				log.error("Failed to upload " + file.getName(), e);
 			}
+			br.close();
+			log.info("Successfully uploaded " + file.getName());
 		} else {
 			log.error("Failed to upload " + file.getName() + " because is does not exist.");
 		}
 
 	}
 
-	private long toTimeStamp(String dateString){
+	private long toTimeStamp(String dateString) throws java.text.ParseException{
 		// format 2012/11/11
-		String[] parts = dateString.split("/");
-		long result = Long.parseLong(parts[0]) * 10000;
-		result += Long.parseLong(parts[1]) * 100;
-		result += Long.parseLong(parts[2]);
-		return result;
+			Date formatDate = format.parse(dateString);
+			long miliSecondForDate = formatDate.getTime();
+			return miliSecondForDate / 1000;
 	}
 
 	private static void logUsage(Options options) {
 		HelpFormatter formatter = new HelpFormatter();
 		StringWriter sw = new StringWriter();
 		PrintWriter pw = new PrintWriter(sw);
-		String syntax = SimpleAggregation.class.getName() + " [<options>]";
+		String syntax = FlightsAnalytics.class.getName() + " [<options>]";
 		formatter.printHelp(pw, 100, syntax, "options:", options, 0, 2, null);
 		log.info(sw.toString());
 	}
