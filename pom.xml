@@ -72,6 +72,8 @@
 							<mainClass>com.aerospike.example.aggregation.FlightsAnalytics</mainClass>
 						</manifest>
 					</archive>
+					<finalName>${project.artifactId}-${project.version}-full</finalName>
+					<appendAssemblyId>false</appendAssemblyId>
 				</configuration>
 				<executions>
 					<execution>

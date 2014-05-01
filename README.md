@@ -1,7 +1,7 @@
 #Realtime analytics with Aerospike
 
 ##Problem
-You want to perform analytics on your BigData stored in Aerospike, and Hadoop is too slow to meet the business requirements
+You want to perform analytics on your BigData stored in Aerospike, and Hadoop is not fast enough to meet the business requirements
 ##Solution
 Use an Aerospike Aggregation on data streaming from the output of a query. Aggregations are the union of a query on a secondary index and one or more StreamUDFs.
 
@@ -20,7 +20,7 @@ After cloning the repository, use maven to build the jar files. From the root di
 ```
 mvn clean package
 ```
-A JAR file will be produced in the directory 'target', ```flights-analytics-1.0.0-jar-with-dependencies.jar```
+A JAR file will be produced in the directory 'target', ```flights-analytics-1.0.0-full.jar```
 
 ###Creating a secondary index
 Create a secondary index on the Bin ```FL_DATE_BIN``` using the AQL utility. At the prompt type the following command:
@@ -33,7 +33,7 @@ The data is flight records of commercial airline flights in the USA, for the mon
 
 You load the test data by running the jar with the ```-f``` option, specifying the 'data' directory. This will load the data from the CSV files supplied in the 'data' directory.
 ```
-java -jar flights-analytics-1.0.0-jar-with-dependencies.jar -h <host name> -f data
+java -jar flights-analytics-1.0.0-full.jar -h <host name> -f <project root>/data
 ```
 Data can also be loaded using the [Aerospike Loader](https://github.com/aerospike/aerospike-loader). This a multi-threaded CSV loader that takes full advantage of the hardware capabilities to load data rapidly.
 
@@ -47,8 +47,10 @@ To load the data using [Aerospike Loader](https://github.com/aerospike/aerospike
 This is a runnable jar complete with all the dependencies packaged.
 You can run this jar with the following command:
 ```
-java -jar flights-analytics-1.0.0-jar-with-dependencies.jar -h <host name>
+java -jar flights-analytics-1.0.0-full.jar -h <host name>
 ```
+This program will load a User Defined Function (UDF) module when it starts. It will look for the UDF module at this location ```udf/simple_aggregation.lua``. Be sure you place it there.
+
 ####Options
 ```
 -f,--file <arg>       Data file (default: data), only use to load data
@@ -60,7 +62,39 @@ java -jar flights-analytics-1.0.0-jar-with-dependencies.jar -h <host name>
 
 ####Output
 
-<ToDO>
+The output is controlled by a Log4j profile files located at ```src/log4j.properties```.
+
+The first few lines are simple diagnostics that let you know whats happening.
+```
+2632 INFO  FlightsAnalytics  - registered UDF
+2639 INFO  FlightsAnalytics  - built query
+2650 INFO  FlightsAnalytics  - executed aggregation
+2650 INFO  FlightsAnalytics  - Airlines with late flights:
+```
+This is the actual output of the analytics. There are 4 columns:
+* Airline code
+* Total number of flights
+* Number of late flights
+* Percentage of late flights
+
+```
+7510 INFO  FlightsAnalytics  - AS:  33084   6009  18%
+7510 INFO  FlightsAnalytics  - US:  66354  14390  21%
+7510 INFO  FlightsAnalytics  - B6:  51987   8850  17%
+7510 INFO  FlightsAnalytics  - HA:  11352    220   1%
+7511 INFO  FlightsAnalytics  - F9:  12556   5744  45%
+7511 INFO  FlightsAnalytics  - EV: 111534  24324  21%
+7511 INFO  FlightsAnalytics  - MQ:  71418  16492  23%
+7511 INFO  FlightsAnalytics  - OO:  94414  19662  20%
+7511 INFO  FlightsAnalytics  - WN: 175788  41660  23%
+7511 INFO  FlightsAnalytics  - DL: 110654  29018  26%
+7512 INFO  FlightsAnalytics  - UA:  80836  29430  36%
+7512 INFO  FlightsAnalytics  - AA: 126926  40902  32%
+7512 INFO  FlightsAnalytics  - YV:  23148   4900  21%
+7512 INFO  FlightsAnalytics  - FL:  37186   6630  17%
+7512 INFO  FlightsAnalytics  - VX:   7948   3070  38%
+7512 INFO  FlightsAnalytics  - Time: 485
+```
 
 ##Discussion 
 
@@ -208,4 +242,21 @@ end
  
 ####Configuration function: late\_flights\_by\_airline()
 This function configures the stream processing.
-<ToDo>
+```lua
+function late_flights_by_airline(stream)
+
+  return stream : aggregate(map(), add_values) 
+    : reduce(reduce_values)
+
+end
+```
+the ```aggregate``` function is passed a new ```map``` and a function reference to ```add_values```.
+
+The ```reduce``` function is passed a function reference to ```reduce_values```.
+
+The stream is processed from left to right in the code
+
+```lua
+  return stream : aggregate(map(), add_values) 
+    : reduce(reduce_values)
+```
