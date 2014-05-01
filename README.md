@@ -97,8 +97,14 @@ This is the actual output of the analytics. There are 4 columns:
 ```
 
 ##Discussion 
+We use the StreamUDF capability of Aerospike to process the stream of records that are the output of the range query. This may seem a little daunting, but not really, consider this diagram:
 
-<ToDO>
+![Stream Processing](query_stream_mapaggregatereduce.png)
+
+Why StreamUDFs at all, you could do all this processing in your application? 
+
+Beside the obvious opportunity for function re-use StreamUDF functions in other aggregations, UDFs allow us to push the processing to the same node in the cluster that stores the data. The processing is close to the data and done in parallel. The cost of shipping ~1,000,000 records to the application is reduced to shipping just the results. 
+
 
 ###Record Structure
 The Key consists of the ```namespace``` from the ```-n``` option (default: test), the set is ```flights```, and the actual key is a String containing a unique number.
@@ -178,15 +184,7 @@ if (rs != null){
 }
 ```
 
-###Aggregation using StreamUDF
-We use the StreamUDF capability of Aerospike to process the stream of records that are the output of the range query. This may seem a little daunting, but not really, consider this diagram:
-
-![Stream Processing](query_stream_mapaggregatereduce.png)
-
-Why StreamUDFs at all, you could do all this processing in your application? 
-
-Beside the obvious opportunity for function re-use StreamUDF functions in other aggregations, UDFs allow us to push the processing to the same node in the cluster that stores the data. The processing is close to the data and done in parallel. The cost of shipping ~1,000,000 records to the application is reduced to shipping just the results. 
-
+###Aggregation using StreamUDFs
 
 StreamUDFs are written in Lua and located in the file ```udf/simple_aggregation.lua```. So why Lua? It is a very fast interpreter and has a very small footprint. 
 
@@ -200,6 +198,8 @@ This function is where the meat of the work is done. The accumulator structure, 
 The ```CARRIER``` Bin value is used as a key to the map ```airlineMap```. If an entry for the carrier does not exist, it is added to the map, the value of ```flights``` for the carrier is incremented by 1, if the flight is late, the value of ```late``` is incremented by 1.
 
 The map ```airlineMap``` is the return value, and will be used either by the next aggregation function invocation OR the reduce function if there are no more records in the query output.
+
+This function is called once for each record in the stream.
 
 ```lua
 local function add_values(airlineMap, nextFlight)
@@ -220,13 +220,11 @@ end
 
 ```
 
-
 ####Reduce function: reduce_values()
-This function runs in a Lua interpreter on the client. It merges the maps produced by each node on the cluster. 
+This function runs in a Lua interpreter on the client. It merges the maps produced by each node on the cluster. The parameters are two results from the aggregate step to be combined.  This function is called once for each node in the cluster returning a result.
 ```lua
 local function reduce_values(a, b)
   return map.merge(a, b, flightsMerge)
-  --return a
 end
 ```
 
@@ -250,11 +248,9 @@ function late_flights_by_airline(stream)
 
 end
 ```
-the ```aggregate``` function is passed a new ```map``` and a function reference to ```add_values```.
+the ```aggregate``` function is passed a new ```map``` and a function reference to ```add_values```. The ```reduce``` function is passed a function reference to ```reduce_values```.
 
-The ```reduce``` function is passed a function reference to ```reduce_values```.
-
-The stream is processed from left to right in the code
+The stream is processed from left to right in this code:
 
 ```lua
   return stream : aggregate(map(), add_values) 
