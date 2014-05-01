@@ -181,7 +181,7 @@ if (rs != null){
 ###Aggregation using StreamUDF
 We use the StreamUDF capability of Aerospike to process the stream of records that are the output of the range query. This may seem a little daunting, but not really, consider this diagram:
 
-![Stream Processing](query_stream_filter.png)
+![Stream Processing](query_stream_mapaggregatereduce.png)
 
 Why StreamUDFs at all, you could do all this processing in your application? 
 
