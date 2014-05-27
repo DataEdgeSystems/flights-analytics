@@ -141,9 +141,9 @@ public class FlightsAnalytics {
 		 * the start date and end date
 		 */
 		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-		Date startDate = sdf.parse("2012-01-01");
+		Date startDate = sdf.parse("2012-01-15");
 		long startTimeStamp = startDate.getTime() / 1000;
-		Date endDate = sdf.parse("2012-01-31");
+		Date endDate = sdf.parse("2012-01-15");
 		long endTimeStamp = endDate.getTime() / 1000;
 		/*
 		 * build the query
@@ -197,6 +197,8 @@ public class FlightsAnalytics {
 				if (file.isDirectory()){
 					File[] csvFiles =file.listFiles();
 					for (final File aFile : csvFiles){
+						if (aFile.getName().startsWith("."))
+							continue;
 						loadFile(aFile);
 					}
 				} else {
