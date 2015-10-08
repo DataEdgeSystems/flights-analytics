@@ -1,9 +1,7 @@
 package com.aerospike.example.aggregation;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileFilter;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -29,6 +27,7 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.lua.LuaConfig;
+import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.Filter;
@@ -64,18 +63,19 @@ public class FlightsAnalytics {
 	private AerospikeClient client;
 	private String seedHost;
 	private int port;
-	private WritePolicy writePolicy;
-	private Policy policy;
 	private String namespace;
 	private static Logger log = Logger.getLogger(FlightsAnalytics.class);
 	private DateFormat format = new SimpleDateFormat("yyyy/MM/dd");
+	
+	public FlightsAnalytics(AerospikeClient client, String namespace) throws AerospikeException {
+		this.client = client;
+		this.namespace = namespace;
+	}
 	
 	public FlightsAnalytics(String host, int port, String namespace) throws AerospikeException {
 		this.client = new AerospikeClient(host, port);
 		this.seedHost = host;
 		this.port = port;
-		this.writePolicy = new WritePolicy();
-		this.policy = new Policy();
 		this.namespace = namespace;
 	}
 	public static void main(String[] args) throws java.text.ParseException {
@@ -110,6 +110,12 @@ public class FlightsAnalytics {
 			}
 
 			FlightsAnalytics sa = new FlightsAnalytics(host, port, namespace);
+//			ClientPolicy policy = new ClientPolicy();
+//			policy.user = "dbadmin";
+//			policy.password = "au=money";
+//			policy.failIfNotConnected = true;
+//			AerospikeClient c = new AerospikeClient(policy, "C-9a8d04af83.aerospike.io", 3200);
+//			FlightsAnalytics sa = new FlightsAnalytics(c, namespace);
 			if (cl.hasOption("f"))
 				sa.loadData(fileName);
 			else
@@ -129,7 +135,7 @@ public class FlightsAnalytics {
 		 */
 		LuaConfig.SourceDirectory = "udf"; // Setting the Lua cache directory
 		File udfFile = new File("udf/simple_aggregation.lua");
-		RegisterTask task = this.client.register(this.policy, 
+		RegisterTask task = this.client.register(null, 
 				udfFile.getPath(), 
 				udfFile.getName(), 
 				Language.LUA); 
@@ -187,7 +193,7 @@ public class FlightsAnalytics {
 			/*
 			 * create index on itemNo
 			 */
-			IndexTask indexTask = this.client.createIndex(this.policy, this.namespace, FLIGHTS, 
+			IndexTask indexTask = this.client.createIndex(null, this.namespace, FLIGHTS, 
 					FL_DATE_INDEX, FL_DATE_BIN, IndexType.NUMERIC);
 			indexTask.waitTillComplete();
 			log.info("created index");
@@ -223,7 +229,7 @@ public class FlightsAnalytics {
 				 * write the record to Aerospike
 				 * NOTE: Bin names must not exceed 14 characters
 				 */
-				client.put(this.writePolicy,
+				client.put(null,
 						new Key(this.namespace, FLIGHTS,flight[0].trim() ),
 						new Bin(YEAR_BIN, Integer.parseInt(flight[1].trim())),	
 						new Bin(DAY_OF_MONTH_BIN, Integer.parseInt(flight[2].trim())),
