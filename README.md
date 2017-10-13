@@ -1,11 +1,11 @@
-#Realtime analytics with Aerospike
+# Realtime analytics with Aerospike
 
-##Problem
+## Problem
 You want to perform analytics on your BigData stored in Aerospike, and Hadoop is not fast enough to meet the business requirements
-##Solution
+## Solution
 Use an Aerospike Aggregation on data streaming from the output of a query. Aggregations are the union of a query on a secondary index and one or more StreamUDFs.
 
-###Getting the code
+### Getting the code
 The source code for this solution is available on GitHub, at https://github.com/aerospike/flights-analytics.git
 
 Clone the GitHub repository using the following command:
@@ -13,7 +13,7 @@ Clone the GitHub repository using the following command:
 git clone https://github.com/aerospike/flights-analytics.git
 ```
 
-###Build instructions
+### Build instructions
 This example requires a working Java development environment (Java 6 and above) including Maven (Maven 2). The Aerospike Java client will be downloaded from Maven Central as part of the build.
 
 After cloning the repository, use maven to build the jar files. From the root directory of the project, issue the following command:
@@ -22,7 +22,7 @@ mvn clean package
 ```
 A JAR file will be produced in the directory 'target', ```flights-analytics-1.0.0-full.jar```
 
-###Creating a secondary index
+### Creating a secondary index
 Create a secondary index on the Bin ```FL_DATE_BIN``` using the AQL utility. At the prompt type the following command:
 ```sql
 CREATE INDEX FL_DATE on test.flights (FL_DATE_BIN) NUMERIC
@@ -43,7 +43,7 @@ To load the data using [Aerospike Loader](https://github.com/aerospike/aerospike
 ```bash
 ./run_loader -h localhost -c <project root>/flights_from.json <project root>/data
 ``` 
-###Running the solution
+### Running the solution
 This is a runnable jar complete with all the dependencies packaged.
 You can run this jar with the following command:
 ```
@@ -51,7 +51,7 @@ java -jar flights-analytics-1.0.0-full.jar -h <host name>
 ```
 This program will load a User Defined Function (UDF) module when it starts. It will look for the UDF module at this location ```udf/simple_aggregation.lua``. Be sure you place it there.
 
-####Options
+#### Options
 ```
 -f,--file <arg>       Data file (default: data), only use to load data
 -h,--host <arg>       Server hostname (default: localhost)
@@ -60,7 +60,7 @@ This program will load a User Defined Function (UDF) module when it starts. It w
 -u,--usage            Print usage.
 ```
 
-####Output
+#### Output
 
 The output is controlled by a Log4j profile files located at ```src/log4j.properties```.
 
@@ -96,7 +96,7 @@ This is the actual output of the analytics. There are 4 columns:
 7512 INFO  FlightsAnalytics  - Time: 485
 ```
 
-##Discussion 
+## Discussion 
 We use the StreamUDF capability of Aerospike to process the stream of records that are the output of the range query. This may seem a little daunting, but not really, consider this diagram:
 
 ![Stream Processing](query_stream_mapaggregatereduce.png)
@@ -106,7 +106,7 @@ Why StreamUDFs at all, you could do all this processing in your application?
 Beside the obvious opportunity for function re-use StreamUDF functions in other aggregations, UDFs allow us to push the processing to the same node in the cluster that stores the data. The processing is close to the data and done in parallel. The cost of shipping ~1,000,000 records to the application is reduced to shipping just the results. 
 
 
-###Record Structure
+### Record Structure
 The Key consists of the ```namespace``` from the ```-n``` option (default: test), the set is ```flights```, and the actual key is a String containing a unique number.
 
 The following table describes each Bin:
@@ -132,7 +132,7 @@ ELAPSED_TIME | Integer
 AIR_TIME | Integer
 DISTANCE | Integer
 
-####Conversion to time stamp
+#### Conversion to time stamp
 Aerospike has no native TimeStamp type, but it is easily implemented. In this example, the TimeStamp value is ```Long``` containing the number of seconds since January 1, 1970, 00:00:00 GMT.
 
 The Java [SimpleDateFormat](http://docs.oracle.com/javase/6/docs/api/java/text/SimpleDateFormat.html) class is used to convert the string "2012/01/15" to a [Date](http://docs.oracle.com/javase/6/docs/api/java/util/Date.html) object. The method [getTime()](http://docs.oracle.com/javase/6/docs/api/java/util/Date.html#getTime() is called to get the number of milliseconds and this is divided by 1000.
@@ -150,7 +150,7 @@ long endTimeStamp = endDate.getTime() / 1000;
 ```
 This is a slight variation from the algorithm used by [Aerospike Loader](https://github.com/aerospike/aerospike-loader) in that the time zone offset is not factored into the conversion from Date to Seconds.
 
-###Range Query
+### Range Query
 The foundation building block of this aggregation is a secondary index query. This a range query on the TimeStamp in FL\_DATE\_BIN.
 ```java
 /*
@@ -184,7 +184,7 @@ if (rs != null){
 }
 ```
 
-###Aggregation using StreamUDFs
+### Aggregation using StreamUDFs
 
 StreamUDFs are written in Lua and located in the file ```udf/simple_aggregation.lua```. So why Lua? It is a very fast interpreter and has a very small footprint. 
 
@@ -192,7 +192,7 @@ The ```aggregation``` function is executed on each node in the cluster, once for
 
 The ```reduce``` function is run on the calling client. It collates the results from each node.
 
-####Aggregation function: add_values()
+#### Aggregation function: add_values()
 This function is where the meat of the work is done. The accumulator structure, in this case a map, is the first parameter, and the record is the second parameter.
 
 The ```CARRIER``` Bin value is used as a key to the map ```airlineMap```. If an entry for the carrier does not exist, it is added to the map, the value of ```flights``` for the carrier is incremented by 1, if the flight is late, the value of ```late``` is incremented by 1.
@@ -220,7 +220,7 @@ end
 
 ```
 
-####Reduce function: reduce_values()
+#### Reduce function: reduce_values()
 This function runs in a Lua interpreter on the client. It merges the maps produced by each node on the cluster. The parameters are two results from the aggregate step to be combined.  This function is called once for each node in the cluster returning a result.
 ```lua
 local function reduce_values(a, b)
@@ -238,7 +238,7 @@ local function flightsMerge(a, b)
 end
 ```
  
-####Configuration function: late\_flights\_by\_airline()
+#### Configuration function: late\_flights\_by\_airline()
 This function configures the stream processing.
 ```lua
 function late_flights_by_airline(stream)
